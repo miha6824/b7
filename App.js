@@ -1,28 +1,53 @@
 import React, { useState } from 'react';
+import { Provider, useDispatch, useSelector } from 'react-redux';
+import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Appbar, Checkbox, Button, Card } from 'react-native-paper';
 
-const App = () => {
-  const [todos, setTodos] = useState([]);
-  const [text, setText] = useState('');
+// Redux slice for todos
+const todoSlice = createSlice({
+  name: 'todos',
+  initialState: [],
+  reducers: {
+    addTodo: (state, action) => {
+      state.push({ id: Date.now().toString(), text: action.payload, completed: false });
+    },
+    toggleTodo: (state, action) => {
+      const todo = state.find(todo => todo.id === action.payload);
+      if (todo) {
+        todo.completed = !todo.completed;
+      }
+    },
+    deleteTodo: (state, action) => {
+      return state.filter(todo => todo.id !== action.payload);
+    },
+  },
+});
 
-  const addTodo = () => {
+const { actions, reducer } = todoSlice;
+const store = configureStore({ reducer: { todos: reducer } });
+
+// App Component
+const TodoList = () => {
+  const [text, setText] = useState('');
+  const todos = useSelector(state => state.todos);
+  const dispatch = useDispatch();
+
+  const handleAddTodo = () => {
     if (text.trim().length === 0) {
       Alert.alert('Lỗi', 'Vui lòng nhập nội dung công việc.');
       return;
     }
-    setTodos([...todos, { id: Date.now().toString(), text, completed: false }]);
+    dispatch(actions.addTodo(text));
     setText('');
   };
 
-  const toggleTodo = (id) => {
-    setTodos(todos.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+  const handleToggleTodo = (id) => {
+    dispatch(actions.toggleTodo(id));
   };
 
-  const deleteTodo = (id) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+  const handleDeleteTodo = (id) => {
+    dispatch(actions.deleteTodo(id));
   };
 
   const renderTodo = ({ item }) => (
@@ -30,12 +55,12 @@ const App = () => {
       <View style={styles.todoContent}>
         <Checkbox
           status={item.completed ? 'checked' : 'unchecked'}
-          onPress={() => toggleTodo(item.id)}
+          onPress={() => handleToggleTodo(item.id)}
         />
         <Text style={[styles.todoText, item.completed && styles.completedText]}>
           {item.text}
         </Text>
-        <TouchableOpacity onPress={() => deleteTodo(item.id)} style={styles.deleteButtonContainer}>
+        <TouchableOpacity onPress={() => handleDeleteTodo(item.id)} style={styles.deleteButtonContainer}>
           <Text style={styles.deleteButton}>Xóa</Text>
         </TouchableOpacity>
       </View>
@@ -55,7 +80,7 @@ const App = () => {
           value={text}
           onChangeText={setText}
         />
-        <Button mode="contained" onPress={addTodo} style={styles.addButton}>
+        <Button mode="contained" onPress={handleAddTodo} style={styles.addButton}>
           Thêm
         </Button>
       </View>
@@ -66,6 +91,14 @@ const App = () => {
         contentContainerStyle={styles.listContainer}
       />
     </View>
+  );
+};
+
+const App = () => {
+  return (
+    <Provider store={store}>
+      <TodoList />
+    </Provider>
   );
 };
 
